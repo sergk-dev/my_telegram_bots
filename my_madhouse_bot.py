@@ -85,7 +85,7 @@ async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     context.chat_data['morning_is_done'] = True
     reply_keyboard = [["/morning", "/evening"], ["/setmorningtime", "/seteveningtime"]]
     await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True))
-    sched_reset()
+    sched_reset(context=context)
     return ConversationHandler.END
 
 EVENING1, EVENING2, EVENING3, EVENING_END = range(4)
