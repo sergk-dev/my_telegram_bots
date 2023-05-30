@@ -66,6 +66,7 @@ MORNING1, MORNING2, MORNING3, MORNING_END = range(4)
 async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал начало"""
     global morning_is_done
+    context.user_data['str_remain'] = 3;
     if not morning_is_done:
         reply_keyboard = [["Дальше", "/Cancel"]]
         await update.message.reply_text('Доброе утро! Пора сделать утренний ритуал! Вот, для начала, молитва: ')
@@ -78,8 +79,27 @@ async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def morning_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал 1"""
-    await update.message.reply_text('Напиши 3 благодарности:', reply_markup=ReplyKeyboardRemove())
-    return MORNING2
+    str_remain = context.user_data['str_remain']
+    if str_remain = 3: 
+        str_remain = 2
+        await update.message.reply_text('Напиши 3 благодарности:', reply_markup=ReplyKeyboardRemove())
+        context.user_data['str_remain'] = str_remain
+        return MORNING1
+    else:
+        if str_remain = 2:
+            str_remain = 1
+            await update.message.edit_text('Осталось еще 2...')
+            context.user_data['str_remain'] = str_remain
+            return MORNING1
+        else:
+            if str_remain = 1:
+                str_remain = 0
+                await update.message.edit_text('Еще всего одну...')
+                context.user_data['str_remain'] = str_remain
+                return MORNING1
+            else:
+                await update.message.edit_text('Ты благодарен сегодня утром за это:')
+                return MORNING2
 
 async def morning_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал 2"""
