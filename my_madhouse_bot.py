@@ -21,6 +21,8 @@ Note:
 To use the JobQueue, you must install PTB via
 `pip install python-telegram-bot[job-queue]`
 """
+from dotenv import load_dotenv
+import os
 
 import logging
 import threading
@@ -253,10 +255,11 @@ def set_reminders():
 
 def main() -> None:
     """Run bot."""
+    load_dotenv()
+    API_KEY = os.getenv('API_KEY_my_madhouse_bot')
+    
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("6140800415:AAF97xZHjlc7905a8dk67RIjTypTmPIILFo").build()
-    #testbot
-    #application = Application.builder().token("1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE").build()
+    application = Application.builder().token(API_KEY).build()
     
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler(["start", "help"], start))
