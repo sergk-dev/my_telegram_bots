@@ -39,7 +39,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, Bot
 from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler, filters, MessageHandler
 
 # Enable logging
@@ -66,7 +66,7 @@ MORNING1, MORNING2, MORNING3, MORNING_END = range(4)
 async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал начало"""
     global morning_is_done
-    context.user_data['str_remain'] = 3;
+    context.user_data['str_remain'] = 3
     if not morning_is_done:
         reply_keyboard = [["Дальше", "/Cancel"]]
         await update.message.reply_text('Доброе утро! Пора сделать утренний ритуал! Вот, для начала, молитва: ')
@@ -80,25 +80,30 @@ async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def morning_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал 1"""
     str_remain = context.user_data['str_remain']
-    if str_remain = 3: 
+    if str_remain == 3: 
         str_remain = 2
         await update.message.reply_text('Напиши 3 благодарности:', reply_markup=ReplyKeyboardRemove())
         context.user_data['str_remain'] = str_remain
         return MORNING1
     else:
-        if str_remain = 2:
+        if str_remain == 2:
             str_remain = 1
-            await update.message.edit_text('Осталось еще 2...')
+            bot_message = await update.message.reply_text('Еще 2...')
+            context.user_data['bot_message'] = bot_message
             context.user_data['str_remain'] = str_remain
             return MORNING1
         else:
-            if str_remain = 1:
+            if str_remain == 1:
                 str_remain = 0
-                await update.message.edit_text('Еще всего одну...')
+                bot_message = context.user_data['bot_message']
+                await bot_message.delete()
+                bot_message = await context.user_data['bot_message'].reply_text('Еще всего одну...')
+                context.user_data['bot_message'] = bot_message
                 context.user_data['str_remain'] = str_remain
                 return MORNING1
             else:
-                await update.message.edit_text('Ты благодарен сегодня утром за это:')
+                bot_message = context.user_data['bot_message']
+                await bot_message.delete()
                 return MORNING2
 
 async def morning_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -249,8 +254,10 @@ def set_reminders():
 def main() -> None:
     """Run bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("6140800415:AAF97xZHjlc7905a8dk67RIjTypTmPIILFo").build()
-
+    #application = Application.builder().token("6140800415:AAF97xZHjlc7905a8dk67RIjTypTmPIILFo").build()
+    #testbot
+    application = Application.builder().token("1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE").build()
+    
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler(["start", "help"], start))
     
