@@ -61,7 +61,8 @@ EVENING_PRAY = 'Когда мы ложимся спать, мы конструк
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends explanation on how to use the bot."""
-    await update.message.reply_text("Привет, рад что ты выздоравливаешь! \nЧтобы пройти утренний ритуал используй команду /morning, для вечернего /evening. \nЕсли хочешь я буду напоминать о том что надо сделать 11 шаг. Используй /setmorningtime и /seteveningtime для установки времени напоминаний. \nУ тебя все получится! \nС Богом!")
+    reply_keyboard = [["/morning", "/evening"], ["/setmorningtime", "/seteveningtime"]]
+    await update.message.reply_text("Привет, рад что ты выздоравливаешь! \nЧтобы пройти утренний ритуал используй команду /morning, для вечернего /evening. \nЕсли хочешь я буду напоминать о том что надо сделать 11 шаг. Используй /setmorningtime и /seteveningtime для установки времени напоминаний. \nУ тебя все получится! \nС Богом!", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True))
 
 MORNING1, MORNING2, MORNING3, MORNING_END = range(4)
 
@@ -123,7 +124,8 @@ async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     """Утренний ритуал завершение"""
     global morning_is_done
     morning_is_done = True
-    await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.')
+    reply_keyboard = [["/morning", "/evening"], ["/setmorningtime", "/seteveningtime"]]
+    await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True))
     return ConversationHandler.END
 
 EVENING1, EVENING2, EVENING3, EVENING_END = range(4)
