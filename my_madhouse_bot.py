@@ -255,14 +255,14 @@ def main() -> None:
     application.add_handler(conv_handler)
     
     conv_handler = ConversationHandler(entry_points=[CommandHandler("setmorningtime", set_morning_time_start)],
-        states={MORNING_REMINDER: [MessageHandler(filters.Regex('^[0-2][0-3]:[0-5][0-9]$'), set_morning_time_end)],
+        states={MORNING_REMINDER: [MessageHandler(filters.Regex(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'), set_morning_time_end)],
         },
         fallbacks = [CommandHandler('cancel', cancel_conv)],
     )
     application.add_handler(conv_handler)
     
     conv_handler = ConversationHandler(entry_points=[CommandHandler("seteveningtime", set_evening_time_start)],
-        states={MORNING_REMINDER: [MessageHandler(filters.Regex('^[0-2][0-3]:[0-5][0-9]$'), set_evening_time_end)],
+        states={MORNING_REMINDER: [MessageHandler(filters.Regex(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'), set_evening_time_end)],
         },
         fallbacks = [CommandHandler('cancel', cancel_conv)],
     )
