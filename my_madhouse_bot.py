@@ -254,9 +254,9 @@ def set_reminders():
 def main() -> None:
     """Run bot."""
     # Create the Application and pass it your bot's token.
-    #application = Application.builder().token("6140800415:AAF97xZHjlc7905a8dk67RIjTypTmPIILFo").build()
+    application = Application.builder().token("6140800415:AAF97xZHjlc7905a8dk67RIjTypTmPIILFo").build()
     #testbot
-    application = Application.builder().token("1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE").build()
+    #application = Application.builder().token("1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE").build()
     
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler(["start", "help"], start))
