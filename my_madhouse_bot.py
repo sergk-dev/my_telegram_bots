@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 import os
 
 import logging
-import threading
-import schedule, time
-
+from datetime import time
 from telegram import __version__ as TG_VER
 
 try:
@@ -28,8 +26,6 @@ from telegram.ext import Application, CommandHandler, ContextTypes, Conversation
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-
-# Define the reminders dictionary
 
 MORNING_PRAY = 'Боже направь мои мысли в верное русло, \nОсобенно избавь меня от жалости к себе, \nБесчестных поступков, корыстолюбия. \nПокажи мне в течение всего дня, \nКаким должен быть мой следующий шаг. \nДай мне все, что необходимо для решения проблем. \nИзбавь меня от эгоизма. \nЯ не руковожу своей жизнью. \nДа исполняю я волю Твою.'
 EVENING_PRAY = 'Когда мы ложимся спать, мы конструктивно оцениваем прожитый день. Не были ли мы в течение дня наполненными resentment-ом, эгоистичными или нечестными, может, мы испытывали страх? Или должны извиниться перед кем-то? Может, мы кое-что затаили про себя, что следует немедленно обсудить с кем-либо? Проявляли ли мы любовь и доброту ко всем окружающим? Что мы могли бы сделать лучше? Может, в основном мы думаем только о себе? Или мы думали о том, что можем сделать для других, о нашем вкладе в общее течение жизни? Не нужно только поддаваться беспокойству, угрызениям совести или мрачным размышлениям, ибо в этом случае наши возможности приносить пользу другим уменьшаются. Вспомнив события прожитого дня, мы просим прощения у Бога и спрашиваем Его, как нам исправить наши ошибки.'
@@ -157,23 +153,34 @@ async def set_morning_time_start(update: Update, context: ContextTypes.DEFAULT_T
     
 async def set_morning_time_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Установка утреннего напоминания начало"""
-    
-    morning_reminder_time = update.message.text
-    if morning_reminder_time != '00:00':
-        schedule.every().day.at(morning_reminder_time).do(send_morning_reminder, update, context).tag('morning_reminder')
-        context.user_data['morning_reminder_job'] = run_continuously(target=send_morning_reminder, args=(update, context))
-        await update.message.reply_text(f'Напоминание о утреннем ритуале установлено на {morning_reminder_time}')
+    if 'morning_is_done' in context.chat_data:
+        morning_is_done = context.chat_data['morning_is_done']
     else:
-        if 'morning_reminder_job' in context.user_data:
-            context.user_data['morning_reminder_job'].set()
-        await update.message.reply_text('Напоминание о утреннем ритуале отключено')
-    
+        morning_is_done = False
+        context.chat_data['morning_is_done'] = morning_is_done
+    morning_reminder_time = update.message.text
+    reminder_text = 'Пора сделать утренний ритуал! Жми на команду /morning!'
+    #if morning_reminder_time != '00:00':
+    #    schedule.every().day.at(morning_reminder_time).do(send_morning_reminder, morning_is_done, update.effective_chat.id, reminder_text).tag('morning_reminder')
+    #    context.user_data['morning_reminder_job'] = run_continuously(target=send_morning_reminder, args=(morning_is_done, update.effective_chat.id, reminder_text))
+    #    await update.message.reply_text(f'Напоминание о утреннем ритуале установлено на {morning_reminder_time}')
+    #else:
+    #    if 'morning_reminder_job' in context.user_data:
+    #        context.user_data['morning_reminder_job'].set()
+    #    await update.message.reply_text('Напоминание о утреннем ритуале отключено')
+    context.job_queue.run_daily(send_morning_reminder, time=time.fromisoformat(morning_reminder_time))
+    await update.message.reply_text(f'Напоминание о утреннем ритуале установлено на {morning_reminder_time}')
     return ConversationHandler.END
+
+#def send_morning_reminder(morning_is_done: bool, chat_id: int, text: str):
+#    if morning_is_done == False:
+#        Bot.send_message(Bot, chat_id=chat_id, text=text)
+
         
-def send_morning_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def send_morning_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'morning_is_done' in context.chat_data:
         if context.chat_data['morning_is_done'] == False:
-            update.message.reply_text('Пора сделать утренний ритуал! Жми на команду /morning!')    
+            await update.message.reply_text('Пора сделать утренний ритуал! Жми на команду /morning!')    
 
 EVENING_REMINDER = range(1)
 
@@ -187,51 +194,51 @@ async def set_evening_time_end(update: Update, context: ContextTypes.DEFAULT_TYP
     """Установка вечернего напоминания начало"""
     
     evening_reminder_time = update.message.text
-    if evening_reminder_time != '00:00':
-        schedule.every().day.at(evening_reminder_time).do(send_evening_reminder, update, context).tag('evening_reminder')
-        context.user_data['evening_reminder_job'] = run_continuously(target=send_evening_reminder, args=(update, context))
-        await update.message.reply_text(f'Напоминание о вечернем ритуале установлено на {evening_reminder_time}')
-    else:
-        if 'evening_reminder_job' in context.user_data:
-            context.user_data['evening_reminder_job'].set()
-        await update.message.reply_text('Напоминание о вечернем ритуале отключено')
-        
+    #if evening_reminder_time != '00:00':
+        #schedule.every().day.at(evening_reminder_time).do(send_evening_reminder, update, context).tag('evening_reminder')
+    context.job_queue.run_daily(send_evening_reminder, time=time.fromisoformat(evening_reminder_time))
+        #context.user_data['evening_reminder_job'] = run_continuously(target=send_evening_reminder, args=(update, context))
+    await update.message.reply_text(f'Напоминание о вечернем ритуале установлено на {evening_reminder_time}')
+    #else:
+        #if 'evening_reminder_job' in context.user_data:
+        #    context.user_data['evening_reminder_job'].set()
+        #await update.message.reply_text('Напоминание о вечернем ритуале отключено')
+    #    asyncio.
     return ConversationHandler.END
 
-def send_evening_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def send_evening_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'evening_is_done' in context.chat_data:
         if context.chat_data['evening_is_done'] == False:
-            update.message.reply_text('Пора сделать вечерний ритуал! Жми на команду /evening!') 
+            await update.message.reply_text('Пора сделать вечерний ритуал! Жми на команду /evening!') 
                        
 async def cancel_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Прервать ритуал"""
     await update.message.reply_text('Конечно, вернемся к этому когда будешь готов.')
     return ConversationHandler.END
 
-def sched_reset(context: ContextTypes.chat_data):
-    reset_achivements_jobs = schedule.get_jobs('reset_achivements')
-    if reset_achivements_jobs.count == 0:
-        schedule.every().day.at("00:00").do(reset_achivements, context=context).tag('reset_achivements')
-        run_continuously(target=reset_achivements, args=(context))
+def sched_reset(context: ContextTypes.DEFAULT_TYPE):
+    context.job_queue.run_daily(reset_achivements, time=time.fromisoformat('00:00'))
+    #asyncio.create_task(scheduler_reset_context(context))
 
 def reset_achivements(context: ContextTypes.chat_data):
     context.chat_data['morning_is_done'] = False
     context.chat_data['evening_is_done'] = False
 
-def run_continuously(interval=1, target = None, args = None):
-        cease_continuous_run = threading.Event()
-
-        class ScheduleThread(threading.Thread):
-            @classmethod
-            def run(cls):
-                while not cease_continuous_run.is_set():
-                    schedule.run_pending()
-                    time.sleep(interval)
-
-        continuous_thread = ScheduleThread(target=target, args=args)
-        continuous_thread.start()
-        return cease_continuous_run
-
+async def scheduler_morning_reminder(time: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    aioschedule.every().day.at(time).do(send_morning_reminder, update, context)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)
+async def scheduler_evening_reminder(time: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    aioschedule.every().day.at(time).do(send_evening_reminder, update, context)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)
+async def scheduler_reset_context(context: ContextTypes.DEFAULT_TYPE):
+    aioschedule.every().day.at('00:00').do(reset_achivements, context)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)                
 def main() -> None:
     """Run bot."""
     
