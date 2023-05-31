@@ -61,13 +61,13 @@ async def morning_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def morning_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал 2"""
     await update.message.delete()
-    await update.message.reply_text('Что сделает этот день прекрасным? (Нажми "Дальше" когда закончишь)', reply_markup=ReplyKeyboardMarkup(CONVERSATION_REPKEY, one_time_keyboard=True, resize_keyboard=True))
+    await update.message.reply_text('Что сделает этот день прекрасным? (Нажми "Дальше" когда закончишь)', reply_markup=ReplyKeyboardMarkup(CONVERSATION_REPKEY, resize_keyboard=True))
     return MORNING3
 
 async def morning_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал 3"""
     await update.message.delete()
-    await update.message.reply_text('Позитивная установка:', reply_markup = ReplyKeyboardRemove())
+    await update.message.reply_text('Позитивная установка:', reply_markup=ReplyKeyboardMarkup(CONVERSATION_REPKEY, resize_keyboard=True, input_field_placeholder="Напиши себе позитивную установку на день."))
     return MORNING_END
 
 async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -187,6 +187,12 @@ async def cancel_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     await update.message.reply_text('Конечно, вернемся к этому когда будешь готов.', reply_markup=reply_markup)
     return ConversationHandler.END
 
+async def reset_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Прервать ритуал"""
+    reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True)
+    await update.message.reply_text('Прости, я сбился, давай начнем с начала.', reply_markup=reply_markup)
+    return ConversationHandler.END
+
 def sched_reset(context: ContextTypes.DEFAULT_TYPE):
     context.job_queue.run_daily(reset_achivements, time=time.fromisoformat('03:00'))
 
@@ -209,7 +215,7 @@ def main() -> None:
             MORNING3: [MessageHandler(filters.Regex('Дальше'), morning_3)],
             MORNING_END: [MessageHandler(filters.ALL & ~filters.COMMAND, morning_end)],
         },
-        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv)],
+        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
     application.add_handler(conv_handler1)
     
@@ -219,21 +225,21 @@ def main() -> None:
             EVENING3: [MessageHandler(filters.Regex('Дальше'), evening_3)],
             EVENING_END: [MessageHandler(filters.Regex('Дальше'), evening_end)],
         },
-        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv)],
+        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
     application.add_handler(conv_handler2)
     
     conv_handler3 = ConversationHandler(entry_points=[CommandHandler("setmorningtime", set_morning_time_start), MessageHandler(filters.Regex('Напоминать мне утром'), set_morning_time_start)],
         states={MORNING_REMINDER: [MessageHandler(filters.Regex(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'), set_morning_time_end)],
         },
-        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv)],
+        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
     application.add_handler(conv_handler3)
     
     conv_handler4 = ConversationHandler(entry_points=[CommandHandler("seteveningtime", set_evening_time_start), MessageHandler(filters.Regex('Напоминать мне вечером'), set_evening_time_start)],
         states={EVENING_REMINDER: [MessageHandler(filters.Regex(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$'), set_evening_time_end)],
         },
-        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv)],
+        fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
     application.add_handler(conv_handler4)
      
