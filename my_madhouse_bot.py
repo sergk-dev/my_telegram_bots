@@ -8,6 +8,7 @@ import logging
 from datetime import time
 import arrow
 from telegram import __version__ as TG_VER
+from pathlib import Path
 
 try:
     from telegram import __version_info__
@@ -20,7 +21,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import ReplyKeyboardMarkup, Update, Bot, BotCommand
+from telegram import ReplyKeyboardMarkup, Update, Bot, BotCommand, BotCommandScopeChat, Document
 from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler, filters, MessageHandler
 
 logging.basicConfig(
@@ -30,8 +31,9 @@ logging.basicConfig(
 MORNING_PRAY = 'Боже направь мои мысли в верное русло, \nОсобенно избавь меня от жалости к себе, \nБесчестных поступков, корыстолюбия. \nПокажи мне в течение всего дня, \nКаким должен быть мой следующий шаг. \nДай мне все, что необходимо для решения проблем. \nИзбавь меня от эгоизма. \nЯ не руковожу своей жизнью. \nДа исполняю я волю Твою.'
 EVENING_PRAY = 'Когда мы ложимся спать, мы конструктивно оцениваем прожитый день. Не были ли мы в течение дня наполненными resentment-ом, эгоистичными или нечестными, может, мы испытывали страх? Или должны извиниться перед кем-то? Может, мы кое-что затаили про себя, что следует немедленно обсудить с кем-либо? Проявляли ли мы любовь и доброту ко всем окружающим? Что мы могли бы сделать лучше? Может, в основном мы думаем только о себе? Или мы думали о том, что можем сделать для других, о нашем вкладе в общее течение жизни? Не нужно только поддаваться беспокойству, угрызениям совести или мрачным размышлениям, ибо в этом случае наши возможности приносить пользу другим уменьшаются. Вспомнив события прожитого дня, мы просим прощения у Бога и спрашиваем Его, как нам исправить наши ошибки.'
 
-MAIN_REPKEY = [["Утренний ритуал", "Вечерний ритуал"], ["Напоминать мне утром", "Напоминать мне вечером"]]
-CONVERSATION_REPKEY = [["Дальше", "Отмена"]]
+MAIN_REPKEY = [["🌞Утренний ритуал", "🌛Вечерний ритуал"], ["⏰ Напоминать мне утром", "⏰ Напоминать мне вечером"], ["📜 Как слушать Бога", "📜 Молитвы и медитации"]]
+CONVERSATION_REPKEY = [["✅ Дальше", "❌ Отмена"]]
+FILE_PATH = ""
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends explanation on how to use the bot."""
@@ -77,7 +79,7 @@ async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     """Утренний ритуал завершение"""
     await set_mybot_command(update, context, True)
     context.chat_data['morning_is_done'] = True
-    await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
+    await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True))
     sched_reset(context)
     return ConversationHandler.END
 
@@ -167,7 +169,7 @@ async def set_evening_time_end(update: Update, context: ContextTypes.DEFAULT_TYP
     hour, minute = map(int, time_str.split(':'))
     evening_reminder_time = convert_time_to_UTC(time(hour, minute))
     mychat_id = update.effective_message.chat_id
-    context.job_queue.run_daily(send_morning_reminder, time=evening_reminder_time, chat_id=mychat_id)
+    context.job_queue.run_daily(send_evening_reminder, time=evening_reminder_time, chat_id=mychat_id)
     await update.message.reply_text(f'Напоминание о вечернем ритуале установлено на {time_str}', reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
     return ConversationHandler.END
 
@@ -207,22 +209,39 @@ async def set_mybot_command(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         command_list = [BotCommand("morning","Утренний ритуал")
                         , BotCommand("evening", "Вечерний ритуал")
                         , BotCommand("setmorningtime", "Настроить напоминания об утреннем ритуале")
-                        , BotCommand("seteveningtime", "Настроить напоминания об вечернем ритуале")
+                        , BotCommand("seteveningtime", "Настроить напоминания о вечернем ритуале")
                         , BotCommand("help", "Помощь")]
     else:
         command_list = [BotCommand("next","Дальше")
                         , BotCommand("cancel", "Отмена")]
-    scope = telegram.BotCommandScopeChat(chat_id = update.effective_message.chat_id)
+    scope = BotCommandScopeChat(chat_id = update.effective_message.chat_id)
     await context.bot.set_my_commands(command_list, scope)
+
+async def send_file_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    files_path = context.bot_data['files_path']
+    doc_name = update.message.text
+    if doc_name == "Как слушать Бога":
+        doc_path = f'{files_path}Как слушать Бога.pdf'
+    elif doc_name == "Молитвы и медитации":
+        doc_path = f'{files_path}Молитвы и медитации.pdf'
+    else:
+        return
+    with open(doc_path, 'rb') as fh:
+        content = fh.read()
+        await update.message.reply_document(document=content, filename=f'{doc_name}.pdf')
 
 def main() -> None:
     """Run bot."""
-    
     load_dotenv()
     API_KEY = os.getenv('API_KEY_my_madhouse_bot')
+    
     #API_KEY = '1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE'
     application = Application.builder().token(API_KEY).build()
     application.add_handler(CommandHandler(["start", "help"], start))
+    application.add_handler(MessageHandler(filters.Regex('Как слушать Бога'), send_file_pdf))
+    application.add_handler(MessageHandler(filters.Regex('Молитвы и медитации'), send_file_pdf))
+    
+    application.bot_data['files_path'] = os.getenv('FILES_PATH')
     
     conv_handler1 = ConversationHandler(entry_points=[CommandHandler("morning", morning_start), MessageHandler(filters.Regex('Утренний ритуал'), morning_start)],
         states={MORNING1: [MessageHandler(filters.ALL & ~filters.COMMAND & ~filters.Regex('Отмена'), morning_1), CommandHandler(["next"], morning_1)],
