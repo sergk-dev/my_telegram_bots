@@ -6,6 +6,7 @@ import os
 
 import logging
 from datetime import time
+import arrow
 from telegram import __version__ as TG_VER
 
 try:
@@ -19,7 +20,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"{TG_VER} version of this example, "
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, Bot
+from telegram import ReplyKeyboardMarkup, Update, Bot, BotCommand
 from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler, filters, MessageHandler
 
 logging.basicConfig(
@@ -41,6 +42,7 @@ MORNING1, MORNING2, MORNING3, MORNING_END = range(4)
 
 async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал начало"""
+    await set_mybot_command(context, False)
     morning_is_done = context.chat_data.get('morning_is_done', False)
         
     if not morning_is_done:
@@ -75,12 +77,14 @@ async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     context.chat_data['morning_is_done'] = True
     await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
     sched_reset(context)
+    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 EVENING1, EVENING2, EVENING3, EVENING_END = range(4)
 
 async def evening_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Вечерний ритуал начало"""
+    await set_mybot_command(context, False)
     evening_is_done = context.chat_data.get('evening_is_done', False)
     
     if not evening_is_done:
@@ -119,11 +123,13 @@ async def evening_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     message = 'Вы отлично поработали сегодня! Приятных снов!' if morning_is_done else 'Вы хорошо поработали сегодня! Завтра постарайтесь начать день с утреннего ритуала, день станет лучше, обещаю. Приятных снов!'
     await update.message.reply_text(message, reply_markup=reply_markup)
     sched_reset(context)
+    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 MORNING_REMINDER = range(1)
 
 async def set_morning_time_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await set_mybot_command(context, False)
     reply_keyboard = [["06:00", "06:30", "07:00", "07:30"], ["08:00", "08:30", "09:00", "09:30"], ["10:00", "10:30", "11:00", "11:30"], ["12:00", "12:30", "13:00", "13:30"]]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('В какое время ты обычно просыпаешься? Напиши время для утреннего напоминания в формате ЧЧ:MM', reply_markup=reply_markup)
@@ -133,18 +139,11 @@ async def set_morning_time_end(update: Update, context: ContextTypes.DEFAULT_TYP
     """Установка утреннего напоминания начало"""
     time_str = update.message.text
     hour, minute = map(int, time_str.split(':'))
-    if hour > 3:
-        hour -= 3
-    elif hour == 2:
-        hour = 23
-    elif hour == 1:
-        hour = 22
-    else:
-        hour = 21
-    morning_reminder_time = time(hour, minute)
+    morning_reminder_time = convert_time_to_UTC(time(hour, minute));
     mychat_id = update.effective_message.chat_id
     context.job_queue.run_daily(send_morning_reminder, time=morning_reminder_time, chat_id=mychat_id)
     await update.message.reply_text(f'Напоминание об утреннем ритуале установлено на {time_str}', reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
+    await set_mybot_command(context, True)
     return ConversationHandler.END
         
 async def send_morning_reminder(context: ContextTypes.DEFAULT_TYPE):
@@ -154,6 +153,7 @@ async def send_morning_reminder(context: ContextTypes.DEFAULT_TYPE):
 EVENING_REMINDER = range(1)
 
 async def set_evening_time_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await set_mybot_command(context, False)
     reply_keyboard = [["20:00", "20:15", "20:30", "20:45"], ["21:00", "21:15", "21:30", "21:45"], ["22:00", "22:15", "22:30", "22:45"], ["23:00", "23:15", "23:30", "23:45"]]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('В какое время ты обычно ложишься спать? Напиши время для вечернего напоминания в формате ЧЧ:MM', reply_markup=reply_markup)
@@ -163,18 +163,11 @@ async def set_evening_time_end(update: Update, context: ContextTypes.DEFAULT_TYP
     """Установка вечернего напоминания начало"""
     time_str = update.message.text
     hour, minute = map(int, time_str.split(':'))
-    if hour > 3:
-        hour -= 3
-    elif hour == 2:
-        hour = 23
-    elif hour == 1:
-        hour = 22
-    else:
-        hour = 21
-    evening_reminder_time = time(hour, minute)
+    evening_reminder_time = convert_time_to_UTC(time(hour, minute))
     mychat_id = update.effective_message.chat_id
     context.job_queue.run_daily(send_morning_reminder, time=evening_reminder_time, chat_id=mychat_id)
     await update.message.reply_text(f'Напоминание о вечернем ритуале установлено на {time_str}', reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
+    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 async def send_evening_reminder(context: ContextTypes.DEFAULT_TYPE):
@@ -185,12 +178,14 @@ async def cancel_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     """Прервать ритуал"""
     reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('Конечно, вернемся к этому когда будешь готов.', reply_markup=reply_markup)
+    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 async def reset_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Прервать ритуал"""
     reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('Прости, я сбился, давай начнем с начала.', reply_markup=reply_markup)
+    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 def sched_reset(context: ContextTypes.DEFAULT_TYPE):
@@ -199,31 +194,50 @@ def sched_reset(context: ContextTypes.DEFAULT_TYPE):
 def reset_achivements(context: ContextTypes.chat_data):
     context.chat_data['morning_is_done'] = False
     context.chat_data['evening_is_done'] = False
-               
+
+def convert_time_to_UTC(my_time: time) -> time:
+    local_datetime = arrow.now()
+    my_datetime = local_datetime.replace(hour=my_time.hour, minute=my_time.minute, second=0, microsecond=0)
+    utc_datetime = my_datetime.to('UTC')
+    return utc_datetime.time()
+
+async def set_mybot_command(update: Update, context: ContextTypes.DEFAULT_TYPE, full: bool) -> None:
+    if full:
+        command_list = [BotCommand("morning","Утренний ритуал")
+                        , BotCommand("evening", "Вечерний ритуал")
+                        , BotCommand("setmorningtime", "Настроить напоминания об утреннем ритуале")
+                        , BotCommand("seteveningtime", "Настроить напоминания об вечернем ритуале")
+                        , BotCommand("help", "Помощь")]
+    else:
+        command_list = [BotCommand("next","Дальше")
+                        , BotCommand("cancel", "Отмена")]
+    scope = telegram.BotCommandScopeChat(chat_id = update.effective_message.chat_id)
+    await context.bot.set_my_commands(command_list, scope)
+
 def main() -> None:
     """Run bot."""
     
     load_dotenv()
     API_KEY = os.getenv('API_KEY_my_madhouse_bot')
-    
+    API_KEY = '1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE'
     application = Application.builder().token(API_KEY).build()
     application.add_handler(CommandHandler(["start", "help"], start))
     
     conv_handler1 = ConversationHandler(entry_points=[CommandHandler("morning", morning_start), MessageHandler(filters.Regex('Утренний ритуал'), morning_start)],
-        states={MORNING1: [MessageHandler(filters.ALL & ~filters.COMMAND & ~filters.Regex('Отмена'), morning_1)],
-            MORNING2: [MessageHandler(filters.Regex('Дальше'), morning_2)],
-            MORNING3: [MessageHandler(filters.Regex('Дальше'), morning_3)],
-            MORNING_END: [MessageHandler(filters.ALL & ~filters.COMMAND, morning_end)],
+        states={MORNING1: [MessageHandler(filters.ALL & ~filters.COMMAND & ~filters.Regex('Отмена'), morning_1), CommandHandler(["next"], morning_1)],
+            MORNING2: [MessageHandler(filters.Regex('Дальше'), morning_2), CommandHandler(["next"], morning_2)],
+            MORNING3: [MessageHandler(filters.Regex('Дальше'), morning_3), CommandHandler(["next"], morning_3)],
+            MORNING_END: [MessageHandler(filters.ALL & ~filters.COMMAND, morning_end), CommandHandler(["next"], morning_end)],
         },
         fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
     application.add_handler(conv_handler1)
     
     conv_handler2 = ConversationHandler(entry_points=[CommandHandler("evening", evening_start), MessageHandler(filters.Regex('Вечерний ритуал'), evening_start)],
-        states={EVENING1: [MessageHandler(filters.ALL & ~filters.COMMAND & ~filters.Regex('Отмена'), evening_1)],
-            EVENING2: [MessageHandler(filters.Regex('Дальше'), evening_2)],
-            EVENING3: [MessageHandler(filters.Regex('Дальше'), evening_3)],
-            EVENING_END: [MessageHandler(filters.Regex('Дальше'), evening_end)],
+        states={EVENING1: [MessageHandler(filters.ALL & ~filters.COMMAND & ~filters.Regex('Отмена'), evening_1), CommandHandler(["next"], evening_1)],
+            EVENING2: [MessageHandler(filters.Regex('Дальше'), evening_2), CommandHandler(["next"], evening_2)],
+            EVENING3: [MessageHandler(filters.Regex('Дальше'), evening_3), CommandHandler(["next"], evening_3)],
+            EVENING_END: [MessageHandler(filters.Regex('Дальше'), evening_end), CommandHandler(["next"], evening_end)],
         },
         fallbacks = [CommandHandler('cancel', cancel_conv), MessageHandler(filters.Regex('Отмена'), cancel_conv), MessageHandler(filters.COMMAND & ~filters.Regex('cancel'), reset_conv)],
     )
