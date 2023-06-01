@@ -35,6 +35,7 @@ CONVERSATION_REPKEY = [["Дальше", "Отмена"]]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends explanation on how to use the bot."""
+    await set_mybot_command(update, context, True)
     await update.message.reply_text("Привет, рад что ты выздоравливаешь! \nЧтобы пройти утренний ритуал используй команду /morning, для вечернего /evening. \nЕсли хочешь я буду напоминать о том что надо сделать 11 шаг. Используй /setmorningtime и /seteveningtime для установки времени напоминаний. \nУ тебя все получится! \nС Богом!", reply_markup=ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
     sched_reset(context=context)
     
@@ -42,7 +43,7 @@ MORNING1, MORNING2, MORNING3, MORNING_END = range(4)
 
 async def morning_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал начало"""
-    await set_mybot_command(context, False)
+    await set_mybot_command(update, context, False)
     morning_is_done = context.chat_data.get('morning_is_done', False)
         
     if not morning_is_done:
@@ -74,17 +75,17 @@ async def morning_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def morning_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Утренний ритуал завершение"""
+    await set_mybot_command(update, context, True)
     context.chat_data['morning_is_done'] = True
     await update.message.reply_text('Отличная работа! Вероятно тебе стоит еще набрать спонсору, или другому выздоравливающему, чтобы обсудить пришедшие руководства.', reply_markup=ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
     sched_reset(context)
-    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 EVENING1, EVENING2, EVENING3, EVENING_END = range(4)
 
 async def evening_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Вечерний ритуал начало"""
-    await set_mybot_command(context, False)
+    await set_mybot_command(update, context, False)
     evening_is_done = context.chat_data.get('evening_is_done', False)
     
     if not evening_is_done:
@@ -116,6 +117,7 @@ async def evening_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def evening_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Вечерний ритуал завершение"""
+    await set_mybot_command(update, context, True)
     morning_is_done = context.chat_data.get('morning_is_done', False)
     context.chat_data['evening_is_done'] = True
     await update.message.delete()
@@ -123,13 +125,12 @@ async def evening_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     message = 'Вы отлично поработали сегодня! Приятных снов!' if morning_is_done else 'Вы хорошо поработали сегодня! Завтра постарайтесь начать день с утреннего ритуала, день станет лучше, обещаю. Приятных снов!'
     await update.message.reply_text(message, reply_markup=reply_markup)
     sched_reset(context)
-    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 MORNING_REMINDER = range(1)
 
 async def set_morning_time_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await set_mybot_command(context, False)
+    await set_mybot_command(update, context, False)
     reply_keyboard = [["06:00", "06:30", "07:00", "07:30"], ["08:00", "08:30", "09:00", "09:30"], ["10:00", "10:30", "11:00", "11:30"], ["12:00", "12:30", "13:00", "13:30"]]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('В какое время ты обычно просыпаешься? Напиши время для утреннего напоминания в формате ЧЧ:MM', reply_markup=reply_markup)
@@ -137,13 +138,13 @@ async def set_morning_time_start(update: Update, context: ContextTypes.DEFAULT_T
     
 async def set_morning_time_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Установка утреннего напоминания начало"""
+    await set_mybot_command(update, context, True)
     time_str = update.message.text
     hour, minute = map(int, time_str.split(':'))
     morning_reminder_time = convert_time_to_UTC(time(hour, minute));
     mychat_id = update.effective_message.chat_id
     context.job_queue.run_daily(send_morning_reminder, time=morning_reminder_time, chat_id=mychat_id)
     await update.message.reply_text(f'Напоминание об утреннем ритуале установлено на {time_str}', reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
-    await set_mybot_command(context, True)
     return ConversationHandler.END
         
 async def send_morning_reminder(context: ContextTypes.DEFAULT_TYPE):
@@ -153,7 +154,7 @@ async def send_morning_reminder(context: ContextTypes.DEFAULT_TYPE):
 EVENING_REMINDER = range(1)
 
 async def set_evening_time_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await set_mybot_command(context, False)
+    await set_mybot_command(update, context, False)
     reply_keyboard = [["20:00", "20:15", "20:30", "20:45"], ["21:00", "21:15", "21:30", "21:45"], ["22:00", "22:15", "22:30", "22:45"], ["23:00", "23:15", "23:30", "23:45"]]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('В какое время ты обычно ложишься спать? Напиши время для вечернего напоминания в формате ЧЧ:MM', reply_markup=reply_markup)
@@ -161,13 +162,13 @@ async def set_evening_time_start(update: Update, context: ContextTypes.DEFAULT_T
 
 async def set_evening_time_end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Установка вечернего напоминания начало"""
+    await set_mybot_command(update, context, True)
     time_str = update.message.text
     hour, minute = map(int, time_str.split(':'))
     evening_reminder_time = convert_time_to_UTC(time(hour, minute))
     mychat_id = update.effective_message.chat_id
     context.job_queue.run_daily(send_morning_reminder, time=evening_reminder_time, chat_id=mychat_id)
     await update.message.reply_text(f'Напоминание о вечернем ритуале установлено на {time_str}', reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True))
-    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 async def send_evening_reminder(context: ContextTypes.DEFAULT_TYPE):
@@ -176,16 +177,16 @@ async def send_evening_reminder(context: ContextTypes.DEFAULT_TYPE):
                        
 async def cancel_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Прервать ритуал"""
+    await set_mybot_command(update, context, True)
     reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('Конечно, вернемся к этому когда будешь готов.', reply_markup=reply_markup)
-    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 async def reset_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Прервать ритуал"""
+    await set_mybot_command(update, context, True)
     reply_markup = ReplyKeyboardMarkup(MAIN_REPKEY, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text('Прости, я сбился, давай начнем с начала.', reply_markup=reply_markup)
-    await set_mybot_command(context, True)
     return ConversationHandler.END
 
 def sched_reset(context: ContextTypes.DEFAULT_TYPE):
