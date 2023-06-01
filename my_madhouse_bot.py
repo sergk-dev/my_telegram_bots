@@ -220,7 +220,7 @@ def main() -> None:
     
     load_dotenv()
     API_KEY = os.getenv('API_KEY_my_madhouse_bot')
-    API_KEY = '1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE'
+    #API_KEY = '1479968532:AAEcVpbAajkHq8KIXGuTBHHsWJuwiRn1BSE'
     application = Application.builder().token(API_KEY).build()
     application.add_handler(CommandHandler(["start", "help"], start))
     
